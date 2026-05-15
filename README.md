@@ -21,7 +21,7 @@ SPDChoco/
 │   ├── kernel.py               # auto-builds + loads libspdc
 │   ├── compute.py              # high-level simulation API
 │   ├── plotting.py             # figure recipes
-│   └── style.py                # shared visual style (#ede2d8 cream)
+│   └── style.py                # shared visual style
 ├── examples/                   # usage examples
 │   ├── scan_waists.py              # 2-D waist scan
 │   ├── modes.py                    # mode-resolved spectra
