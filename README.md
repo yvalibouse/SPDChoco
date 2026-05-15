@@ -29,7 +29,6 @@ SPDChoco/
 ├── spectrum_vs_T.py            # waterfall + heatmap vs T
 ├── brightness_vs_T.py          # brightness vs T with a tunable filter
 ├── hom_vs_T.py                 # HOM dip vs T
-├── test_kernel.py              # regression test: method 0 vs method 1
 └── README.md
 ```
 
