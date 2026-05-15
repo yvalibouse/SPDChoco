@@ -156,4 +156,7 @@ Every figure uses the shared style in `chocospdc/style.py`:
 
 Edit `style.py` to retune the whole project at once.
 
-*Disclaimer: The author is a physicist and does not claim expertise in computer science. After its initial development, this library was refactored with the assistance of AI to ensure consistency in notation and overall architecture.*
+
+
+## Disclaimer
+*The author is a physicist and does not claim expertise in computer science. After its initial development, this library was refactored with the assistance of AI to ensure consistency in notation and overall architecture.*
