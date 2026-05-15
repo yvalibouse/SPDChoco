@@ -17,8 +17,8 @@ from chocospdc import compute, plotting, style
 
 
 # ── Parameters ──────────────────────────────────────────────────────
-WP_RANGE   = (10.0, 100.0)         # pump waist range [µm]
-WS_RANGE   = (10.0, 100.0)         # signal/idler waist range [µm]
+WP_RANGE   = (25.0, 100.0)         # pump waist range [µm]
+WS_RANGE   = (25.0, 100.0)         # signal/idler waist range [µm]
 N_W        = 30                    # grid points per axis
 N_Z        = 48                    # Gauss–Legendre z-nodes
 N_R        = 64                    # GL r-nodes (method 0 only)
