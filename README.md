@@ -144,8 +144,6 @@ Two singles methods coexist in the kernel:
   sum).  Cost scales as N_Z² but is independent of P_MAX.  This is the
   default in `compute.waist_scan` and `compute.pair_singles`.
 
-`test_kernel.py` checks that the two methods agree to ~1e-5 on
-S₂, S₁_s and S₁_i, plus the symmetric η.
 
 ## Visual style
 
