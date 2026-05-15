@@ -22,13 +22,14 @@ SPDChoco/
 │   ├── compute.py              # high-level simulation API
 │   ├── plotting.py             # figure recipes
 │   └── style.py                # shared visual style (#ede2d8 cream)
+├── examples/                   # usage examples
+│   ├── scan_waists.py              # 2-D waist scan
+│   ├── modes.py                    # mode-resolved spectra
+│   ├── jsa.py                      # Joint Spectral Amplitude + Schmidt
+│   ├── spectrum_vs_T.py            # waterfall + heatmap vs T
+│   ├── brightness_vs_T.py          # brightness vs T with a tunable filter
+│   └── hom_vs_T.py                 # HOM dip vs T
 ├── spdc_kernel.c               # C source (OpenMP)
-├── scan_waists.py              # 2-D waist scan
-├── modes.py                    # mode-resolved spectra
-├── jsa.py                      # Joint Spectral Amplitude + Schmidt
-├── spectrum_vs_T.py            # waterfall + heatmap vs T
-├── brightness_vs_T.py          # brightness vs T with a tunable filter
-├── hom_vs_T.py                 # HOM dip vs T
 └── README.md
 ```
 
