@@ -155,12 +155,3 @@ Every figure uses the shared style in `chocospdc/style.py`:
 - Despined line plots, math-mode labels, single source-of-truth `rcParams`
 
 Edit `style.py` to retune the whole project at once.
-
-## Adding a new computation
-
-1. Add a high-level function to `chocospdc/compute.py` returning a dict.
-2. Add a matching plotter to `chocospdc/plotting.py`.
-3. Create a thin top-level script with parameters as constants and a
-   `main()` that just calls compute + plot.
-
-No argparse needed — every script is just parameters, compute, plot.
