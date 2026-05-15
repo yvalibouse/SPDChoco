@@ -1,4 +1,4 @@
-<img width="450" height="300" alt="choco (1)" src="https://github.com/user-attachments/assets/46395fc5-8e51-4952-a1ee-22cd29252f38" />
+<img width="300" height="200" alt="choco (1)" src="https://github.com/user-attachments/assets/46395fc5-8e51-4952-a1ee-22cd29252f38" />
 
 
 Fast simulation of heralding efficiency, brightness, spectral purity,
