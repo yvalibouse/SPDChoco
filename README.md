@@ -1,4 +1,5 @@
-# ChocoSPDC — Focused SPDC Source Simulator
+<img width="1536" height="1024" alt="choco (1)" src="https://github.com/user-attachments/assets/46395fc5-8e51-4952-a1ee-22cd29252f38" />
+
 
 Fast simulation of heralding efficiency, brightness, spectral purity,
 HOM dips and joint spectral amplitudes for a focused SPDC photon-pair
