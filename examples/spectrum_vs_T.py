@@ -24,11 +24,11 @@ FWHM_NM       = None                 # None → take from config
 N_Z           = 48
 
 # Waterfall: coarse T grid
-T_WATERFALL   = (config.T - 20.0, config.T + 20.0)   # °C
+T_WATERFALL   = (config.T - 10.0, config.T + 20.0)   # °C
 DT_WATERFALL  = 4.0                                  # °C step
 
 # Heatmap: fine T grid
-T_HEATMAP     = (config.T - 20.0, config.T + 40.0)   # °C
+T_HEATMAP     = (config.T - 10.0, config.T + 40.0)   # °C
 DT_HEATMAP    = 0.2                                  # °C step
 
 PLOT_WATERFALL = True

@@ -25,12 +25,12 @@ from chocospdc import compute, plotting, style, config
 WP          = config.w0_p
 WS          = config.w0_s
 
-T_RANGE     = (22.0, 50.0)         # °C
+T_RANGE     = (35.0, 60.0)         # °C
 DT          = 1.0                  # °C step
 
 N_LAM       = 120                  # spectral grid per axis
 N_Z         = 64                   # GL z-nodes
-HALF_RANGE  = 0.002                # numerical half-width [µm]
+HALF_RANGE  = 0.008                # numerical half-width [µm]
 
 TAU_MAX_PS  = 10.0                 # τ half-range [ps]
 N_TAU       = 401                  # τ grid points (odd → τ = 0 on grid)
@@ -38,7 +38,7 @@ N_TAU       = 401                  # τ grid points (odd → τ = 0 on grid)
 FWHM_NM     = None                 # None → take from config
 
 # ── Symmetric filter (same in both arms) ────────────────────────────
-FILTER_SHAPE     = "none"          # "none" | "rect" | "gauss" | "file"
+FILTER_SHAPE     = "file"          # "none" | "rect" | "gauss" | "file"
 FILTER_CENTER_NM = None            # None → λ_s0 from config
 FILTER_BW_NM     = 4.0             # ignored if FILTER_SHAPE == "none"
 FILTER_FILE      = 'filter/Thorlabs-FBH1550-4.txt'            # path to text file (2 cols: λ_nm, T_percent) for shape="file"

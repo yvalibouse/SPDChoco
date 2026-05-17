@@ -13,7 +13,7 @@ Verify the configuration with:
 import numpy as np
 from .sellmeier import (
     n_pump, n_signal, n_idler,
-    CRYSTAL_KTP, CRYSTAL_KTP_F, CRYSTAL_BBO, CRYSTAL_PPLN, CRYSTAL_PPLN_MgO,
+    CRYSTAL_KTP, CRYSTAL_KTP_F, CRYSTAL_KTP_EA,CRYSTAL_BBO, CRYSTAL_PPLN, CRYSTAL_PPLN_MgO,
     TYPE_0, TYPE_I, TYPE_II,
     CRYSTAL_NAMES, TYPE_NAMES,
 )
@@ -23,7 +23,7 @@ from .sellmeier import (
 #  USER PARAMETERS
 # ═════════════════════════════════════════════════════════════════════
 
-CRYSTAL   = CRYSTAL_KTP_F      # KTP | KTP_F | BBO | PPLN | PPLN_MgO
+CRYSTAL   = CRYSTAL_KTP_EA      # KTP | KTP_F | BBO | PPLN | PPLN_MgO
 SPDC_TYPE = TYPE_II            # TYPE_0 (e→ee) | TYPE_I (e→oo) | TYPE_II (e→eo)
 
 T   = 30.0                     # working crystal temperature  [°C]
@@ -35,9 +35,9 @@ lambda0_s = 1.55
 lambda0_i = 1.55
 
 # Beam waists (1/e² intensity radius) at the crystal centre [µm]
-w0_p = 30.0                    # pump
-w0_s = 35.0                    # signal collection mode
-w0_i = 35.0                    # idler  collection mode
+w0_p = 18.0                    # pump
+w0_s = 21.0                    # signal collection mode
+w0_i = 21.0                    # idler  collection mode
 
 # Pump spectral FWHM (intensity) [µm].  Must be > 0.
 # For a narrow-linewidth CW laser use e.g. 1e-6 µm = 1 pm.
@@ -45,7 +45,7 @@ FWHM_PUMP = 1e-5
 
 # Temperature at which the QPM grating was designed.
 # Set equal to T for perfect phase matching at degeneracy.
-T_QPM = 20.0
+T_QPM = 25.0
 
 # Longitudinal offset of the collection-mode waist from the crystal
 # centre  [µm].  Positive = towards the output face.

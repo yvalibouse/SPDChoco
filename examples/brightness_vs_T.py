@@ -21,13 +21,14 @@ from chocospdc import compute, plotting, style, config
 WP             = config.w0_p
 WS             = config.w0_s
 
-T_RANGE        = (config.T, config.T + 25.0)        # °C
+T_RANGE        = (config.T-7, config.T + 25.0)        # °C
 DT             = 0.05                                # °C step
 
-FILTER_CENTER  = config.lambda0_s * 1e3              # filter centre [nm]
-FILTER_BW_NM   = [4.0]                               # filter BW(s) [nm]; list ⇒ overlay
-FILTER_FILE      = None             # path to "λ_nm  T_percent" file (overrides shape when set)
-FILTER_SHAPE   = "rect"                              # rect | gauss | none
+# ── Symmetric filter (same in both arms) ────────────────────────────
+FILTER_SHAPE     = "file"                            # "none" | "rect" | "gauss" | "file"
+FILTER_CENTER_NM = config.lambda0_s * 1e3            # filter centre [nm]; None → λ_s0 from config
+FILTER_BW_NM     = [4.0]                             # rect full width / Gaussian FWHM [nm]; list ⇒ overlay
+FILTER_FILE      = 'filter/Thorlabs-FBH1550-4.txt'                              # path to text file (2 cols: λ_nm, T_percent) — used only when FILTER_SHAPE == "file"
 
 LAM_RANGE_NM   = None      # None → auto from filter centre + max BW
 N_LAM          = 400
@@ -47,7 +48,7 @@ def main():
 
     result = compute.brightness_vs_T(
         T_range=T_RANGE, dt=DT,
-        filter_center_nm=FILTER_CENTER,
+        filter_center_nm=FILTER_CENTER_NM,
         filter_bw_nm=FILTER_BW_NM,
         filter_shape=FILTER_SHAPE,
         filter_file=FILTER_FILE,

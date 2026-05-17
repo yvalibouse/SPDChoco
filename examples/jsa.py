@@ -27,13 +27,13 @@ WS          = config.w0_s
 WI          = config.w0_i
 N_LAM       = 150
 N_Z         = 64
-HALF_RANGE  = 0.002        # numerical half-width of (λ_s, λ_i) grid [µm]
+HALF_RANGE  = 0.004        # numerical half-width of (λ_s, λ_i) grid [µm]
 FWHM_NM     = None         # None → take from config
 
 # ── Symmetric filter (same in both arms) ────────────────────────────
-FILTER_SHAPE     = "none"  # "none" | "rect" | "gauss" | "file"
+FILTER_SHAPE     = "rect"  # "none" | "rect" | "gauss" | "file"
 FILTER_CENTER_NM = None    # None → λ_s0 from config
-FILTER_BW_NM     = 1.0     # ignored if FILTER_SHAPE == "none"
+FILTER_BW_NM     = 4.0     # ignored if FILTER_SHAPE == "none"
 FILTER_FILE      = None    # path to text file (2 cols: λ_nm, T_percent) for shape="file"
 
 DATA_DIR    = "data"

@@ -21,6 +21,7 @@ import ctypes
 import time
 
 import numpy as np
+from scipy.optimize import curve_fit
 
 from . import config as cfg
 from . import grids
@@ -850,27 +851,127 @@ def make_filter(lam_um, center_um, bw_um, shape, file=None):
     raise ValueError(f"unknown filter shape: {shape!r} (rect|gauss|file|none)")
 
 
+# Cache of fitted filter files so each path is only fitted once per session.
+# Key: str(path).  Value: dict with either
+#   {"mode": "fit",    "params": (A, x0, sigma, offset), "n": int}
+#   {"mode": "interp", "lam_nm": ndarray,                "T": ndarray}
+_FILTER_FIT_CACHE: dict = {}
+
+
+def _super_gaussian(lam_nm, A, x0, sigma, offset, *, n):
+    """Super-Gaussian of order n: A · exp(-((λ - x0)/σ)^(2n)) + offset.
+
+    ``n = 1`` reduces to the standard Gaussian.
+    """
+    return A * np.exp(-((lam_nm - x0) / sigma) ** (2 * n)) + offset
+
+
+def _fit_filter_curve(lam_nm, T):
+    """Try Gaussian, super-Gaussian order 2 and order 3 fits to ``T(λ_nm)``.
+
+    Returns the best-converging fit (lowest residual SSE among those that
+    converge to a finite, physically reasonable parameter set), or
+    ``None`` if every model fails.
+    """
+    # Robust initial guesses from the data.
+    offset_init = float(np.percentile(T, 5))
+    A_init      = float(T.max() - offset_init)
+    x0_init     = float(lam_nm[np.argmax(T)])
+    half        = 0.5 * (T.max() + offset_init)
+    above       = lam_nm[T >= half]
+    if above.size >= 2:
+        fwhm_init = float(above.max() - above.min())
+    else:
+        fwhm_init = (lam_nm.max() - lam_nm.min()) / 30.0
+
+    orders = (("gaussian", 1),
+              ("super_gaussian_2", 2),
+              ("super_gaussian_3", 3))
+
+    best = None
+    for name, n in orders:
+        # FWHM = 2σ·(ln 2)^(1/(2n))  ⇒  σ = FWHM / [2·(ln 2)^(1/(2n))]
+        sigma_init = fwhm_init / (2.0 * (np.log(2.0)) ** (1.0 / (2 * n)))
+        p0 = [A_init, x0_init, sigma_init, offset_init]
+
+        def model(x, A, x0, sigma, offset, _n=n):
+            return _super_gaussian(x, A, x0, sigma, offset, n=_n)
+
+        try:
+            popt, pcov = curve_fit(model, lam_nm, T, p0=p0, maxfev=10000)
+        except Exception:
+            continue
+
+        # Reject pathological fits.
+        if not np.all(np.isfinite(popt)) or not np.all(np.isfinite(pcov)):
+            continue
+        if popt[2] <= 0:                          # σ must be positive
+            continue
+
+        sse = float(np.sum((T - model(lam_nm, *popt)) ** 2))
+        if best is None or sse < best["sse"]:
+            best = {"name": name, "n": n,
+                    "params": tuple(float(p) for p in popt), "sse": sse}
+
+    return best
+
+
 def _filter_from_file(path, lam_um):
-    """Load (λ_nm, T_percent) text file and linearly interpolate to lam_um.
+    """Load (λ_nm, T_percent), fit it with a super-Gaussian, evaluate on
+    ``lam_um``.
 
     The file is whitespace- or comma-separated; '#' starts a comment.
-    Transmissions are clipped to [0, 1]; out-of-range wavelengths return 0.
+    Three models are tried — Gaussian, super-Gaussian order 2 and order
+    3 — and the best-converging fit (smallest residual SSE) is used as
+    the effective filter.  If every fit fails, falls back to linear
+    interpolation of the raw data, with transmissions clipped to [0, 1]
+    and out-of-range wavelengths set to 0 (the original behaviour).
+
+    The fit is cached per file path so it is only performed once per
+    session.
     """
-    data = np.loadtxt(str(path), comments="#", delimiter=None,
-                      ndmin=2, dtype=float)
-    if data.shape[1] < 2:
-        # try comma delimiter on second pass
-        data = np.loadtxt(str(path), comments="#", delimiter=",",
+    key = str(path)
+    cache = _FILTER_FIT_CACHE.get(key)
+    if cache is None:
+        data = np.loadtxt(key, comments="#", delimiter=None,
                           ndmin=2, dtype=float)
-    if data.shape[1] < 2:
-        raise ValueError(f"filter file {path!r}: expected two columns "
-                         "(lambda_nm, T_percent)")
-    lam_nm_f = data[:, 0]
-    T_pct_f  = data[:, 1]
-    idx = np.argsort(lam_nm_f)
-    lam_nm_f = lam_nm_f[idx]
-    T = np.clip(T_pct_f[idx], 0.0, 100.0) / 100.0
-    return np.interp(np.asarray(lam_um) * 1e3, lam_nm_f, T,
+        if data.shape[1] < 2:
+            # try comma delimiter on second pass
+            data = np.loadtxt(key, comments="#", delimiter=",",
+                              ndmin=2, dtype=float)
+        if data.shape[1] < 2:
+            raise ValueError(f"filter file {path!r}: expected two columns "
+                             "(lambda_nm, T_percent)")
+
+        lam_nm_f = data[:, 0]
+        T_pct_f  = data[:, 1]
+        idx = np.argsort(lam_nm_f)
+        lam_nm_f = lam_nm_f[idx]
+        T = np.clip(T_pct_f[idx], 0.0, 100.0) / 100.0
+
+        fit = _fit_filter_curve(lam_nm_f, T)
+        if fit is not None:
+            A, x0, sigma, offset = fit["params"]
+            print(f"  Filter file {key!r}: best fit = {fit['name']} "
+                  f"(A = {A:.4f}, x0 = {x0:.4f} nm, "
+                  f"sigma = {sigma:.4f} nm, offset = {offset:.4g}, "
+                  f"SSE = {fit['sse']:.3g})")
+            cache = {"mode": "fit",
+                     "params": fit["params"], "n": fit["n"]}
+        else:
+            print(f"  Filter file {key!r}: super-Gaussian fits did not "
+                  "converge — falling back to linear interpolation.")
+            cache = {"mode": "interp",
+                     "lam_nm": lam_nm_f, "T": T}
+        _FILTER_FIT_CACHE[key] = cache
+
+    lam_nm_grid = np.asarray(lam_um) * 1e3
+    if cache["mode"] == "fit":
+        A, x0, sigma, offset = cache["params"]
+        T_eval = _super_gaussian(lam_nm_grid, A, x0, sigma, offset,
+                                 n=cache["n"])
+        return np.clip(T_eval, 0.0, 1.0)
+    return np.interp(lam_nm_grid, cache["lam_nm"], cache["T"],
                      left=0.0, right=0.0)
 
 

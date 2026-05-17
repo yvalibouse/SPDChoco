@@ -30,10 +30,10 @@ H_TARGET   = 0.80                  # target η for the optimum search
 FWHM_NM    = None                  # None → take from config
 
 # ── Symmetric filter (same in both arms) ────────────────────────────
-FILTER_SHAPE     = "none"          # "none" | "rect" | "gauss" | "file"
+FILTER_SHAPE     = "file"          # "none" | "rect" | "gauss" | "file"
 FILTER_CENTER_NM = None            # None → λ_s0 from config
 FILTER_BW_NM     = 1.0             # ignored if FILTER_SHAPE == "none"
-FILTER_FILE      = None            # path to text file (2 cols: λ_nm, T_percent) for shape="file"
+FILTER_FILE      = 'filter/Thorlabs-FBH1550-4.txt'            # path to text file (2 cols: λ_nm, T_percent) for shape="file"
 
 SAVE_DIR   = "plots"
 DATA_DIR   = "data"

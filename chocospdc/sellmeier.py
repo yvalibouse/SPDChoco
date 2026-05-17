@@ -7,6 +7,9 @@ fully drop-in compatible.
 Crystals supported:
     CRYSTAL_KTP        Kato & Takaoka 2002
     CRYSTAL_KTP_F      Fradkin et al. 1999 / redoptronics
+    CRYSTAL_KTP_EA     König-Wong 2004 (n_y) + Fradkin 1999 (n_z)
+                       with Emanueli-Arie 2003 temperature dependence.
+                       Matches the Thorlabs NLCK4 PPKTP datasheet (000-108-163).
     CRYSTAL_BBO        Kato & Takaoka 2002
     CRYSTAL_PPLN       Gayer 2008 (e-ray) + Zelmon 1997 (o-ray)
     CRYSTAL_PPLN_MgO   Gayer 2008 (both rays, 5 mol% MgO-doped cLN)
@@ -22,12 +25,14 @@ import numpy as np
 # ──────────────────────────────────────────────────────────────────────
 #  Identifiers
 # ──────────────────────────────────────────────────────────────────────
-CRYSTAL_KTP, CRYSTAL_BBO, CRYSTAL_PPLN, CRYSTAL_KTP_F, CRYSTAL_PPLN_MgO = range(5)
+(CRYSTAL_KTP, CRYSTAL_BBO, CRYSTAL_PPLN, CRYSTAL_KTP_F, CRYSTAL_PPLN_MgO,
+ CRYSTAL_KTP_EA) = range(6)
 TYPE_0, TYPE_I, TYPE_II = 0, 1, 2
 
 CRYSTAL_NAMES = {
     CRYSTAL_KTP:      "KTP (Kato)",
     CRYSTAL_KTP_F:    "KTP (Fradkin)",
+    CRYSTAL_KTP_EA:   "KTP (König/Fradkin + Emanueli-Arie)",
     CRYSTAL_BBO:      "BBO",
     CRYSTAL_PPLN:     "PPLN",
     CRYSTAL_PPLN_MgO: "MgO:PPLN",
@@ -90,6 +95,62 @@ def _ktpf(lam, T, axis):
     else:
         n_ref = _ktpf_sellmeier(lam2, _KTPF_Z)
     return n_ref + _KTPF_DNDT[axis] * (T - _KTPF_T_REF)
+
+
+# ──────────────────────────────────────────────────────────────────────
+#  KTP_EA — König/Fradkin dispersion + Emanueli-Arie 2003 temperature dep.
+#
+#  References (as cited in the Thorlabs NLCK4 datasheet, 000-108-163 Rev A):
+#    n_y:  König & Wong, Appl. Phys. Lett. 84, 1644 (2004)
+#    n_z:  Fradkin et al., Appl. Phys. Lett. 74, 914 (1999)
+#    Δn:   Emanueli & Arie, Appl. Opt. 42, 6661 (2003)
+#
+#  Temperature reference T₀ = 25 °C (Emanueli-Arie convention).
+#  Δn(λ, T) = n₁(λ) ΔT + n₂(λ) ΔT²
+#  with nₖ(λ) = c0 + c1/λ + c2/λ² + c3/λ³   (λ in µm, ΔT in °C or K).
+#
+#  Only y- and z-axis indices are defined by the references — these are
+#  the two axes used for collinear propagation along x (type-II PPKTP
+#  at 775 nm pump → 1550 nm signal/idler).
+# ──────────────────────────────────────────────────────────────────────
+_KTP_EA_Y = (2.09930, 0.922683, 0.0467695, 0.0138404)            # (A, B, C, D)
+_KTP_EA_Z = (2.12725, 1.18431, 5.14852e-2,
+             0.6603,  100.00507, 9.68956e-3)                     # (A, B1, C1, B2, C2, D)
+
+# n₁(λ) and n₂(λ) coefficients (c0, c1, c2, c3)
+_KTP_EA_Y_N1 = ( 6.2897e-6,  6.3061e-6, -6.0629e-6,  2.6486e-6)
+_KTP_EA_Y_N2 = (-1.4445e-9,  2.2244e-8, -3.5770e-8,  1.3470e-8)
+_KTP_EA_Z_N1 = ( 9.9587e-6,  9.9228e-6, -8.9603e-6,  4.1010e-6)
+_KTP_EA_Z_N2 = (-1.1882e-8,  1.0459e-7, -9.8136e-8,  3.1481e-8)
+
+_KTP_EA_T_REF = 25.0
+
+
+def _ktp_ea_poly(lam, c):
+    """Evaluate c0 + c1/λ + c2/λ² + c3/λ³."""
+    return c[0] + c[1] / lam + c[2] / lam**2 + c[3] / lam**3
+
+
+def _ktp_ea(lam, T, axis):
+    lam2 = lam * lam
+    dT   = T - _KTP_EA_T_REF
+
+    if axis == 1:                                                # y-axis
+        A, B, C, D = _KTP_EA_Y
+        n_ref = np.sqrt(A + (B / (lam2 - C) - D) * lam2)
+        n1    = _ktp_ea_poly(lam, _KTP_EA_Y_N1)
+        n2    = _ktp_ea_poly(lam, _KTP_EA_Y_N2)
+    elif axis == 2:                                              # z-axis
+        A, B1, C1, B2, C2, D = _KTP_EA_Z
+        n_ref = np.sqrt(A + (B1 / (lam2 - C1) + B2 / (lam2 - C2) - D) * lam2)
+        n1    = _ktp_ea_poly(lam, _KTP_EA_Z_N1)
+        n2    = _ktp_ea_poly(lam, _KTP_EA_Z_N2)
+    else:
+        raise ValueError(
+            "CRYSTAL_KTP_EA: x-axis (axis=0) not provided by the "
+            "König/Fradkin/Emanueli-Arie references."
+        )
+    return n_ref + n1 * dT + n2 * dT**2
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -166,6 +227,7 @@ def _ppln_mgo_o(lam, T):
 _N_O_DISPATCH = {
     CRYSTAL_KTP:      lambda l, T: _ktp(l, T, 2),
     CRYSTAL_KTP_F:    lambda l, T: _ktpf(l, T, 2),
+    CRYSTAL_KTP_EA:   lambda l, T: _ktp_ea(l, T, 2),
     CRYSTAL_BBO:      lambda l, T: _bbo(l, T, 0),
     CRYSTAL_PPLN:     _ppln_o,
     CRYSTAL_PPLN_MgO: _ppln_mgo_o,
@@ -173,6 +235,7 @@ _N_O_DISPATCH = {
 _N_E_DISPATCH = {
     CRYSTAL_KTP:      lambda l, T: _ktp(l, T, 1),
     CRYSTAL_KTP_F:    lambda l, T: _ktpf(l, T, 1),
+    CRYSTAL_KTP_EA:   lambda l, T: _ktp_ea(l, T, 1),
     CRYSTAL_BBO:      lambda l, T: _bbo(l, T, 1),
     CRYSTAL_PPLN:     _ppln_e,
     CRYSTAL_PPLN_MgO: _ppln_e,

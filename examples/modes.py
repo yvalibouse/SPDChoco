@@ -26,8 +26,8 @@ FWHM_NM   = None              # None → take from config
 # ── Symmetric filter (same in both arms) ────────────────────────────
 FILTER_SHAPE     = "none"     # "none" | "rect" | "gauss" | "file"
 FILTER_CENTER_NM = None       # None → λ_s0 from config (rect/gauss only)
-FILTER_BW_NM     = 1.0        # ignored for "none" / "file"
-FILTER_FILE      = None       # path to text file (2 cols: λ_nm, T_percent)
+FILTER_BW_NM     = 4.0        # ignored for "none" / "file"
+FILTER_FILE      = 'filter/Thorlabs-FBH1550-4.txt'       # path to text file (2 cols: λ_nm, T_percent)
 
 SAVE_DIR  = "plots"
 
