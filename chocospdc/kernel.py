@@ -102,6 +102,7 @@ def _register(lib: ctypes.CDLL) -> ctypes.CDLL:
         ctypes.c_int,                                                  # N_SPEC
         _dp, _dp, _dp, _dp,                                            # k_s, k_i, dk, w_spec
         _dp,                                                           # alpha_sq
+        _dp, _dp,                                                      # f_s_arr, f_i_arr
         _dp,                                                           # k_p_arr
         ctypes.c_double, ctypes.c_double, ctypes.c_double,             # k0_p, L, offset_w0
         ctypes.c_double, ctypes.c_double, ctypes.c_double,             # lam0_p, lam0_s, lam0_i
@@ -119,6 +120,7 @@ def _register(lib: ctypes.CDLL) -> ctypes.CDLL:
     lib.compute_single.argtypes = [
         ctypes.c_int,                                                  # N_SPEC
         _dp, _dp, _dp, _dp, _dp,                                       # k_s, k_i, dk, w_spec, alpha_sq
+        _dp, _dp,                                                      # f_s_arr, f_i_arr
         _dp,                                                           # k_p_arr
         ctypes.c_int,                                                  # P_MAX
         ctypes.c_double, ctypes.c_double, ctypes.c_double,             # wp, ws, wi
@@ -148,12 +150,13 @@ def _register(lib: ctypes.CDLL) -> ctypes.CDLL:
         ctypes.c_int, ctypes.c_int, ctypes.c_int,                      # N_lam, N_i, P_MAX
         _dp, _dp, _dp, _dp,                                            # k_s, k_i, k_p, dk
         _dp,                                                           # weights
+        _dp,                                                           # f_i_arr
         ctypes.c_double, ctypes.c_double, ctypes.c_double,             # wp, ws, wi
         ctypes.c_double, ctypes.c_double, ctypes.c_double,             # k0_p, L, offset_w0
         ctypes.c_double, ctypes.c_double,                              # k0_s, k0_i
         ctypes.c_int, _dp, _dp, _dp,                                   # N_Z, z_nodes, z_weights, chi_z
         ctypes.c_int, _dp, _dp,                                        # N_R, r_ref, r_weights
-        _dp_w, _dp_w,                                                  # P_0i_out, P_i0_out
+        _dp_w, _dp_w, _dp_w, _dp_w,                                    # P_0i_bare, P_0i_fi, P_i0_bare, P_i0_fi
     ]
 
     lib.compute_c00_integrated.restype  = None

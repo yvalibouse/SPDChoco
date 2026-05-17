@@ -35,9 +35,9 @@ lambda0_s = 1.55
 lambda0_i = 1.55
 
 # Beam waists (1/e² intensity radius) at the crystal centre [µm]
-w0_p = 25.0                    # pump
-w0_s = 30.0                    # signal collection mode
-w0_i = 30.0                    # idler  collection mode
+w0_p = 30.0                    # pump
+w0_s = 35.0                    # signal collection mode
+w0_i = 35.0                    # idler  collection mode
 
 # Pump spectral FWHM (intensity) [µm].  Must be > 0.
 # For a narrow-linewidth CW laser use e.g. 1e-6 µm = 1 pm.

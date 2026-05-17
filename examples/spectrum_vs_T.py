@@ -11,6 +11,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+import _path  # noqa: F401  — make chocospdc importable from anywhere
 from chocospdc import compute, plotting, style, config
 
 

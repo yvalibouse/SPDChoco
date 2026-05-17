@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """
-brightness_vs_T.py — Brightness vs T with a tunable spectral filter.
+brightness_vs_T.py — Coincidence brightness vs T with a symmetric filter.
 
-For fixed focusing (w_p, w_s) and pump bandwidth, computes the signal-arm
-brightness as a function of T, integrated over one or more filter
-shapes/widths.  Useful for matching simulations to a measured fibre +
-bandpass detection setup.
+For fixed focusing (w_p, w_s) and pump bandwidth, computes the pair-
+coincidence brightness as a function of T with the **same filter on
+both arms** (signal and idler).  Useful for matching simulations to a
+measured setup where identical bandpass filters sit in front of each
+detector.  Several filter widths can be overlaid in one figure.
 """
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+import _path  # noqa: F401  — make chocospdc importable from anywhere
 from chocospdc import compute, plotting, style, config
 
 
@@ -24,6 +26,7 @@ DT             = 0.05                                # °C step
 
 FILTER_CENTER  = config.lambda0_s * 1e3              # filter centre [nm]
 FILTER_BW_NM   = [4.0]                               # filter BW(s) [nm]; list ⇒ overlay
+FILTER_FILE      = None             # path to "λ_nm  T_percent" file (overrides shape when set)
 FILTER_SHAPE   = "rect"                              # rect | gauss | none
 
 LAM_RANGE_NM   = None      # None → auto from filter centre + max BW
@@ -47,6 +50,7 @@ def main():
         filter_center_nm=FILTER_CENTER,
         filter_bw_nm=FILTER_BW_NM,
         filter_shape=FILTER_SHAPE,
+        filter_file=FILTER_FILE,
         wp=WP, ws=WS,
         lam_range_nm=LAM_RANGE_NM, n_lam=N_LAM,
         n_z=N_Z, fwhm_nm=FWHM_NM,
@@ -70,8 +74,12 @@ def main():
              **result["params"])
 
     os.makedirs(SAVE_DIR, exist_ok=True)
-    bw_tag = (FILTER_SHAPE if FILTER_SHAPE == "none"
-              else f"{FILTER_SHAPE}_" + "-".join(f"{b:.3g}" for b in FILTER_BW_NM) + "nm")
+    if FILTER_SHAPE == "file":
+        bw_tag = f"file_{os.path.splitext(os.path.basename(str(FILTER_FILE)))[0]}"
+    elif FILTER_SHAPE == "none":
+        bw_tag = "none"
+    else:
+        bw_tag = f"{FILTER_SHAPE}_" + "-".join(f"{b:.3g}" for b in FILTER_BW_NM) + "nm"
     fname = os.path.join(SAVE_DIR,
                          f"brightness_vs_T_wp{WP:.0f}_ws{WS:.0f}_{bw_tag}.png")
     plotting.brightness_vs_T(result, save=fname,

@@ -3,14 +3,21 @@
 jsa.py — Joint Spectral Amplitude and Schmidt decomposition.
 
 Computes the complex C₀₀(λ_s, λ_i) on a 2-D grid with the broadband
-pump envelope α(λ_p) applied, then performs Schmidt decomposition to
-extract the Schmidt number K.
+pump envelope α(λ_p) applied.  Optionally applies a symmetric bandpass
+filter on both arms (same filter spec as :mod:`brightness_vs_T`) before
+Schmidt decomposition, so the reported K is the filtered Schmidt number
+an experimentalist would measure through identical filters.
+
+If you want the *intrinsic* JSA of the source, keep ``FILTER_SHAPE =
+"none"``.  In that case ``HALF_RANGE`` (the integration window) acts as
+the de facto rect filter on both arms.
 """
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+import _path  # noqa: F401  — make chocospdc importable from anywhere
 from chocospdc import compute, plotting, style, config
 
 
@@ -20,8 +27,15 @@ WS          = config.w0_s
 WI          = config.w0_i
 N_LAM       = 150
 N_Z         = 64
-HALF_RANGE  = 0.002        # ±half-width around λ_s0 [µm]
+HALF_RANGE  = 0.002        # numerical half-width of (λ_s, λ_i) grid [µm]
 FWHM_NM     = None         # None → take from config
+
+# ── Symmetric filter (same in both arms) ────────────────────────────
+FILTER_SHAPE     = "none"  # "none" | "rect" | "gauss" | "file"
+FILTER_CENTER_NM = None    # None → λ_s0 from config
+FILTER_BW_NM     = 1.0     # ignored if FILTER_SHAPE == "none"
+FILTER_FILE      = None    # path to text file (2 cols: λ_nm, T_percent) for shape="file"
+
 DATA_DIR    = "data"
 SAVE_DIR    = "plots"
 
@@ -34,9 +48,19 @@ def main():
         n_lam=N_LAM, n_z=N_Z,
         half_range=HALF_RANGE,
         fwhm_nm=FWHM_NM,
+        filter_center_nm=FILTER_CENTER_NM,
+        filter_bw_nm=FILTER_BW_NM,
+        filter_shape=FILTER_SHAPE,
+        filter_file=FILTER_FILE,
     )
+    if FILTER_SHAPE == "none":
+        tag_f = "no filter"
+    elif FILTER_SHAPE == "file":
+        tag_f = f"file {os.path.basename(str(FILTER_FILE))} (both arms)"
+    else:
+        tag_f = f"{FILTER_SHAPE} {FILTER_BW_NM:.3g} nm (both arms)"
     print(f"  Schmidt number  K = {result['K']:.3f}  "
-          f"(integration {result['time_s']:.2f}s)")
+          f"({tag_f})   integration {result['time_s']:.2f}s")
 
     os.makedirs(DATA_DIR, exist_ok=True)
     np.savez(os.path.join(DATA_DIR, "jsa.npz"),

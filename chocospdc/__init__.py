@@ -16,10 +16,14 @@ Typical usage:
 __all__ = [
     "beams", "compute", "config", "grids", "kernel",
     "plotting", "quadrature", "sellmeier", "style",
+    "make_filter",
 ]
 
 
 def __getattr__(name):
+    if name == "make_filter":
+        from .compute import make_filter
+        return make_filter
     if name in __all__:
         import importlib
         mod = importlib.import_module(f".{name}", __name__)

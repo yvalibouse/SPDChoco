@@ -13,6 +13,7 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.optimize    import brentq, minimize_scalar
 import matplotlib.pyplot as plt
 
+import _path  # noqa: F401  — make chocospdc importable from anywhere
 from chocospdc import compute, plotting, style
 
 
@@ -27,8 +28,15 @@ METHOD     = 1                     # 0 = LG mode sum, 1 = double-z analytic
 P_MAX_MIN  = 6                     # minimum P_MAX when method = 0
 H_TARGET   = 0.80                  # target η for the optimum search
 FWHM_NM    = None                  # None → take from config
+
+# ── Symmetric filter (same in both arms) ────────────────────────────
+FILTER_SHAPE     = "none"          # "none" | "rect" | "gauss" | "file"
+FILTER_CENTER_NM = None            # None → λ_s0 from config
+FILTER_BW_NM     = 1.0             # ignored if FILTER_SHAPE == "none"
+FILTER_FILE      = None            # path to text file (2 cols: λ_nm, T_percent) for shape="file"
+
 SAVE_DIR   = "plots"
-DATA_DIR   = "scan_data"
+DATA_DIR   = "data"
 
 
 def find_optimum(wp, ws, B_map, H_map, h_target):
@@ -85,6 +93,10 @@ def main():
         n_w=N_W, n_z=N_Z, n_r=N_R, n_lam=N_LAM,
         method=METHOD, p_max_min=P_MAX_MIN,
         fwhm_nm=FWHM_NM,
+        filter_center_nm=FILTER_CENTER_NM,
+        filter_bw_nm=FILTER_BW_NM,
+        filter_shape=FILTER_SHAPE,
+        filter_file=FILTER_FILE,
     )
 
     # Optimum on the target-η contour
@@ -100,10 +112,19 @@ def main():
     # Save raw data
     os.makedirs(DATA_DIR, exist_ok=True)
     tag = f"_fwhm{result['params']['fwhm_nm']:.2f}nm_m{METHOD}"
+    if result["has_filter"]:
+        if FILTER_SHAPE == "file":
+            tag += f"_filterfile_{os.path.splitext(os.path.basename(str(FILTER_FILE)))[0]}"
+        else:
+            tag += f"_filter{FILTER_SHAPE}{FILTER_BW_NM:.2g}nm"
     np.savez(os.path.join(DATA_DIR, f"scan_{N_W}{tag}.npz"),
              wp=result["wp"], ws=result["ws"],
              S2=result["S2"], B=result["B"], H=result["H"],
-             method=METHOD, fwhm_nm=result["params"]["fwhm_nm"])
+             method=METHOD, fwhm_nm=result["params"]["fwhm_nm"],
+             has_filter=result["has_filter"],
+             filter_shape=result["params"]["filter_shape"],
+             filter_bw_nm=result["params"]["filter_bw_nm"] or 0.0,
+             filter_center_nm=result["params"]["filter_center_nm"] or 0.0)
 
     # Plots
     os.makedirs(SAVE_DIR, exist_ok=True)

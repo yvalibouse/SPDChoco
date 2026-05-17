@@ -27,6 +27,27 @@ def _title(suffix=""):
     return f"{base}\n{suffix}" if suffix else base
 
 
+def _filter_tag(params, has_filter, prefix=""):
+    """Build a short human-readable description of the symmetric filter,
+    suitable for appending to a title.  Returns "" when no filter is active.
+    """
+    if not has_filter:
+        return ""
+    shape = params.get("filter_shape", "none")
+    if shape == "file":
+        import os
+        path = params.get("filter_file") or "?"
+        name = os.path.basename(str(path))
+        return f"{prefix}filter (both arms): file = {name}"
+    bw   = params.get("filter_bw_nm", 0.0)
+    ctr  = params.get("filter_center_nm")
+    kind = "FWHM" if shape == "gauss" else "BW"
+    s = f"{prefix}filter (both arms): {shape}, {kind} = {bw:.3g} nm"
+    if ctr is not None:
+        s += f", centre = {ctr:.3f} nm"
+    return s
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  WAIST SCAN
 # ══════════════════════════════════════════════════════════════════════
@@ -38,8 +59,14 @@ def waist_scan(result, best=None, save=None):
     wp, ws = result["wp"], result["ws"]
     fwhm   = result["params"]["fwhm_nm"]
 
+    # Filter tag when active
+    suffix = f"pump FWHM = {fwhm:.2f} nm"
+    ftag   = _filter_tag(result["params"], result.get("has_filter"), prefix="   ·   ")
+    if ftag:
+        suffix += ftag
+
     fig, (axH, axB) = st.subplots(1, 2, figsize=(13, 5.5))
-    fig.suptitle(_title(f"pump FWHM = {fwhm:.2f} nm"), fontsize=14, y=0.98)
+    fig.suptitle(_title(suffix), fontsize=13, y=0.98)
     Xc, Yc = np.meshgrid(wp, ws)
 
     # Heralding
@@ -124,6 +151,7 @@ def modes_spectrum(result, save=None):
     ws    = result["params"]["ws"]
     fwhm  = result["params"]["fwhm_nm"]
     eta   = result["eta"]
+    ftag  = _filter_tag(result["params"], result.get("has_filter"), prefix="\n")
 
     fig, ax = st.subplots(figsize=(9, 5))
 
@@ -143,7 +171,7 @@ def modes_spectrum(result, save=None):
     ax.set_ylabel("Spectral density (normalised)")
     ax.set_title(_title(
         f"$w_p$ = {wp:.0f} µm,  $w_s$ = {ws:.0f} µm,  "
-        f"FWHM = {fwhm:.2f} nm  →  η = {eta:.4f}"
+        f"FWHM = {fwhm:.2f} nm  →  η = {eta:.4f}" + ftag
     ))
     ax.legend(ncol=2, title=r"solid $(0,p)$  ·  dashed $(p,0)$",
               title_fontsize=11)
@@ -171,6 +199,9 @@ def jsa(result, save=None):
     T  = result["params"]["T"]
     fwhm = result["params"]["fwhm_nm"]
 
+    # Filter tag if active
+    tag = _filter_tag(result["params"], result.get("has_filter"), prefix="\n")
+
     Ls, Li = np.meshgrid(lam_s, lam_i, indexing="ij")
 
     fig, ax = plt.subplots(figsize=(7.0, 6.2), constrained_layout=True)
@@ -186,8 +217,9 @@ def jsa(result, save=None):
         f"{CRYSTAL_NAMES[cfg.CRYSTAL]}, {TYPE_NAMES[cfg.SPDC_TYPE]}, "
         f"L = {cfg.L/1e3:.0f} mm,  T = {T}°C\n"
         f"$w_p$ = {wp:.0f}, $w_s$ = {ws:.0f}, $w_i$ = {wi:.0f} µm   "
-        f"FWHM = {fwhm:.2f} nm   K = {K:.2f}",
-        fontsize=12)
+        f"FWHM = {fwhm:.2f} nm   K = {K:.2f}"
+        + tag,
+        fontsize=11)
     st.sign(fig)
     if save:
         fig.savefig(save)
@@ -319,7 +351,7 @@ def brightness_vs_T(result, save=None, normalize=True, log=False,
     B = brightness.copy()
     if normalize:
         B = B / np.maximum(B.max(axis=1, keepdims=True), 1e-300)
-        y_label = "Brightness (each curve normalised to its peak)"
+        y_label = "Normalized Brightness"
     else:
         y_label = "Brightness (arb. units)"
     if log:
@@ -327,10 +359,15 @@ def brightness_vs_T(result, save=None, normalize=True, log=False,
 
     for iF, bw in enumerate(bws_nm):
         if f_shape == "none":
-            label = "no filter"
+            label = "no filter (both arms)"
+        elif f_shape == "file":
+            import os
+            path = result.get("filter_file")
+            name = os.path.basename(str(path)) if path else "(file)"
+            label = f"file: {name}  (both arms)"
         else:
             kind = "FWHM" if f_shape == "gauss" else "BW"
-            label = f"{f_shape}  {kind} = {bw:.3g} nm"
+            label = f"{f_shape}  {kind} = {bw:.3g} nm  (both arms)"
         ax_top.plot(T_arr, B[iF], color=colors[iF], lw=1.8, label=label)
 
     ax_top.axvline(cfg.T_QPM, color=st.MUTED, ls=":", lw=1.0, alpha=0.8,
@@ -392,6 +429,9 @@ def hom_best_dip(result, fit=None, save=None):
     T_best  = float(T_arr[iT_best])
     y       = dip[iT_best] / 2.0
 
+    # Filter tag if active
+    tag = _filter_tag(result["params"], result.get("has_filter"), prefix="\n")
+
     fig, ax = st.subplots(figsize=(7, 5))
 
     if fit is not None:
@@ -413,7 +453,7 @@ def hom_best_dip(result, fit=None, save=None):
         ax.hlines(half, x0 - FWHM/2.0, x0 + FWHM/2.0,
                   color=st.INK, lw=1)
         ax.annotate(fr"FWHM = {FWHM:.3g} $\pm$ {FWHM_err:.1g} fs",
-                    xy=(x0+800, half+.04), xytext=(8, -14), textcoords="offset points",
+                    xy=(x0 + FWHM/2.0 + 100, half+.035), xytext=(8, -14), textcoords="offset points",
                     ha="left", va="top", color=st.ACCENT_PURP)
         ax.axhline(c, color=st.MUTED, lw=0.6, ls=":")
 
@@ -422,7 +462,7 @@ def hom_best_dip(result, fit=None, save=None):
 
     ax.set_xlabel("Time delay τ (fs)")
     ax.set_ylabel("Coincidence rate (norm.)")
-    ax.set_title(_title(f"Best dip @ T = {T_best:.2f}°C  (T_QPM = {cfg.T_QPM}°C)"))
+    ax.set_title(_title(f"Best dip @ T = {T_best:.2f}°C  (T_QPM = {cfg.T_QPM}°C)") + tag)
     ax.grid(True, axis="y")
     ax.legend(loc="lower left")
     fig.tight_layout()
@@ -433,6 +473,8 @@ def hom_best_dip(result, fit=None, save=None):
 
 
 def hom_visibility_vs_T(result, save=None):
+    tag = _filter_tag(result["params"], result.get("has_filter"), prefix="   ").lstrip()
+
     fig, ax = st.subplots(figsize=(7, 4.5))
     ax.plot(result["T"], result["V0"] * 100.0,
             color=st.ACCENT_PURP, lw=2.0, label="SPDChoco simulation")
@@ -440,7 +482,7 @@ def hom_visibility_vs_T(result, save=None):
     ax.set_ylabel("Visibility V(0) (%)")
     ax.grid(True)
     ax.legend(loc="best")
-    ax.set_title(_title(""))
+    ax.set_title(_title(tag.lstrip()))
     fig.tight_layout()
     st.sign(fig)
     if save:

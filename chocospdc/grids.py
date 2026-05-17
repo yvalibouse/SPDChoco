@@ -77,8 +77,10 @@ def build_uv_grid(n_v, half_range, sigma_pump,
 
     Returns
     -------
-    k_s, k_i, k_p, dk, w_spec, alpha_sq : ndarray (N_active,)
-        Only points with |α|² above threshold are returned.
+    k_s, k_i, k_p, dk, w_spec, alpha_sq, lam_s, lam_i : ndarray (N_active,)
+        Only points with |α|² above threshold are returned.  ``lam_s``
+        and ``lam_i`` are the physical signal/idler wavelengths at each
+        active spectral point [µm] — used for symmetric filtering.
     N_u, N_v : int
         Full grid dimensions before threshold filtering.
     """
@@ -128,7 +130,7 @@ def build_uv_grid(n_v, half_range, sigma_pump,
 
     w_spec = 0.5 * wu[iu] * wv[iv]
 
-    arrays = (k_s, k_i, k_p, dk, w_spec, alpha_sq)
+    arrays = (k_s, k_i, k_p, dk, w_spec, alpha_sq, lam_s, lam_i)
     arrays = tuple(np.ascontiguousarray(a, dtype=np.float64) for a in arrays)
     return arrays + (n_u, n_v)
 
@@ -142,8 +144,10 @@ def build_heatmap_grid(T_arr, lam_s_arr, sigma_lp, n_i,
 
     n_i = 0 → auto-pick number of idler quadrature points.
 
-    Returns ``(k_s, k_i, k_p, dk, alpha_sq, n_i)`` each of length
-    ``N_T × N_lam × n_i``, plus the chosen n_i.
+    Returns ``(k_s, k_i, k_p, dk, alpha_sq, n_i, lam_i_2d)`` where the
+    first five arrays each have length ``N_T × N_lam × n_i`` and
+    ``lam_i_2d`` (shape ``N_lam × n_i``) holds the per-(λ_s) idler grid
+    — needed for symmetric filtering and proper sub-grid integration.
     """
     T_arr     = np.asarray(T_arr, dtype=np.float64)
     lam_s_arr = np.asarray(lam_s_arr, dtype=np.float64)
@@ -196,7 +200,8 @@ def build_heatmap_grid(T_arr, lam_s_arr, sigma_lp, n_i,
         dk_out [off:off + M] = kp - ks - ki - KG
         alpha_out[off:off + M] = alpha_flat
 
-    return k_s_out, k_i_out, k_p_out, dk_out, alpha_out, n_i
+    return (k_s_out, k_i_out, k_p_out, dk_out, alpha_out, n_i,
+            np.ascontiguousarray(lam_i_2d))
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -252,4 +257,4 @@ def build_modes_grid(lam_s_arr, sigma_lp, n_i,
 
     arrays = (k_s, k_i, k_p, dk, weights_2d.ravel())
     arrays = tuple(np.ascontiguousarray(a, dtype=np.float64) for a in arrays)
-    return arrays + (n_i,)
+    return arrays + (n_i, np.ascontiguousarray(lam_i_2d))

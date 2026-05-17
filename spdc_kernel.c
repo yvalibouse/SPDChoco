@@ -8,7 +8,7 @@
  *     modes and sums |⟨p|Φ⟩|² up to P_MAX.  Fast when P_MAX is
  *     small.  Convergence degrades for strongly mismatched focusing.
  *
- *   Method 1 — Double-z analytic trace (SPDCalc-style).
+ *   Method 1 — Double-z analytic trace.
  *     Traces over the undetected photon analytically using the
  *     Hille–Hardy identity  Σ_p L_p(x) L_p(y) t^p = (1-t)^{-1}
  *     exp[-(x+y)t/(1-t)].  The transverse (r) integrals become
@@ -299,7 +299,7 @@ static void one_spectral_point_lgsum(
 
 
 /* ══════════════════════════════════════════════════════════════════
- *  METHOD 1:  Double-z analytic trace  (SPDCalc-style)
+ *  METHOD 1:  Double-z analytic trace
  *
  *  Coincidences S2:  single-z quadrature (p = 0 only), same as
  *                    method 0 but with P_MAX = 0.
@@ -667,6 +667,7 @@ static void batch_doublez_one_waist(
     const double *k_s_arr, const double *k_i_arr,
     const double *dk_arr, const double *w_spec,
     const double *alpha_sq,
+    const double *f_s_arr, const double *f_i_arr,    /* per-point symmetric filter on both arms */
     const double *k_p_arr,
     double wp, double ws, double wi,
     double k0_p, double L, double offset_w0,
@@ -745,7 +746,8 @@ static void batch_doublez_one_waist(
         for (int il = 0; il < N_SPEC; il++) {
             double re = twopi * c_re[il];
             double im = twopi * c_im[il];
-            S2 += w_spec[il] * alpha_sq[il] * (re * re + im * im);
+            S2 += w_spec[il] * alpha_sq[il] * f_s_arr[il] * f_i_arr[il]
+                  * (re * re + im * im);
         }
     }
     free(c_re);   /* frees c_im too (single allocation) */
@@ -918,8 +920,8 @@ static void batch_doublez_one_waist(
         }
 
         double fourpi2 = 4.0 * M_PI * M_PI;
-        S1_s += wt * fourpi2 * (s1s_acc + s1s_diag);
-        S1_i += wt * fourpi2 * (s1i_acc + s1i_diag);
+        S1_s += wt * f_s_arr[il] * fourpi2 * (s1s_acc + s1s_diag);
+        S1_i += wt * f_i_arr[il] * fourpi2 * (s1i_acc + s1i_diag);
     }
 
     *S2_out   = S2;
@@ -932,7 +934,7 @@ static void batch_doublez_one_waist(
  *  PUBLIC: full waist scan
  *
  *  method = 0 → LG mode sum          (original)
- *  method = 1 → double-z analytic    (SPDCalc-style, batched)
+ *  method = 1 → double-z analytic    (batched)
  * ══════════════════════════════════════════════════════════════════ */
 
 EXPORT void scan_waists(
@@ -942,6 +944,7 @@ EXPORT void scan_waists(
     const double *k_s_arr, const double *k_i_arr,
     const double *dk_arr,  const double *w_spec,
     const double *alpha_sq,
+    const double *f_s_arr, const double *f_i_arr,    /* per-point symmetric filter */
     const double *k_p_arr,
     double k0_p, double L, double offset_w0,
     double lam0_p, double lam0_s, double lam0_i,
@@ -988,16 +991,18 @@ EXPORT void scan_waists(
                     P_0i, P_i0);
 
                 double w  = w_spec[il] * alpha_sq[il];
+                double fs = f_s_arr[il], fi = f_i_arr[il];
                 double ss = 0.0, si = 0.0;
                 for (int i = 0; i <= PM; i++) { ss += P_0i[i]; si += P_i0[i]; }
-                S2   += w * P_0i[0];
-                S1_s += w * ss;
-                S1_i += w * si;
+                S2   += w * fs * fi * P_0i[0];
+                S1_s += w * fs * ss;
+                S1_i += w * fi * si;
             }
         } else {
             /* ── Double-z analytic trace (batched) ───────── */
             batch_doublez_one_waist(
                 N_SPEC, k_s_arr, k_i_arr, dk_arr, w_spec, alpha_sq,
+                f_s_arr, f_i_arr,
                 k_p_arr,
                 wp_val, ws_val, wi_val,
                 k0_p, L, offset_w0,
@@ -1023,6 +1028,7 @@ EXPORT void compute_single(
     const double *k_s_arr, const double *k_i_arr,
     const double *dk_arr,  const double *w_spec,
     const double *alpha_sq,
+    const double *f_s_arr, const double *f_i_arr,    /* per-point symmetric filter */
     const double *k_p_arr,
     int P_MAX,
     double wp, double ws, double wi,
@@ -1050,17 +1056,19 @@ EXPORT void compute_single(
                 N_R, r_ref, r_weights,
                 P_0i, P_i0);
 
-            double w = w_spec[il] * alpha_sq[il];
+            double w  = w_spec[il] * alpha_sq[il];
+            double fs = f_s_arr[il], fi = f_i_arr[il];
             double ss = 0.0, si = 0.0;
             for (int i = 0; i <= pm; i++) { ss += P_0i[i]; si += P_i0[i]; }
-            S2   += w * P_0i[0];
-            S1_s += w * ss;
-            S1_i += w * si;
+            S2   += w * fs * fi * P_0i[0];
+            S1_s += w * fs * ss;
+            S1_i += w * fi * si;
         }
     } else {
         int nz = N_Z < MAX_NZ ? N_Z : MAX_NZ;
         batch_doublez_one_waist(
             N_SPEC, k_s_arr, k_i_arr, dk_arr, w_spec, alpha_sq,
+            f_s_arr, f_i_arr,
             k_p_arr,
             wp, ws, wi,
             k0_p, L, offset_w0,
@@ -1180,21 +1188,26 @@ EXPORT void compute_modes_spectrum(
     const double *k_p_arr,       /* (N_lam * N_i,) */
     const double *dk_arr,        /* (N_lam * N_i,) */
     const double *weights,       /* (N_lam * N_i,) = dλ_i × trap × α² */
+    const double *f_i_arr,       /* (N_lam * N_i,) idler filter; 1.0 = no filter */
     double wp, double ws, double wi,
     double k0_p, double L, double offset_w0,
     double k0_s, double k0_i,
     int N_Z, const double *z_nodes, const double *z_weights,
     const double *chi_z,
     int N_R, const double *r_ref, const double *r_weights,
-    double *P_0i_out,            /* ((P_MAX+1) * N_lam,) row-major */
-    double *P_i0_out)            /* ((P_MAX+1) * N_lam,) row-major */
+    double *P_0i_bare,           /* ((P_MAX+1) * N_lam,)  Σ w |C_{0p}|²    */
+    double *P_0i_fi,             /* ((P_MAX+1) * N_lam,)  Σ w f_i |C_{0p}|² */
+    double *P_i0_bare,           /* ((P_MAX+1) * N_lam,)  Σ w |C_{p0}|²    */
+    double *P_i0_fi)             /* ((P_MAX+1) * N_lam,)  Σ w f_i |C_{p0}|² */
 {
     int pm = P_MAX < MAX_P ? P_MAX : MAX_P;
     int n_modes = pm + 1;
 
     /* Zero the output arrays */
-    memset(P_0i_out, 0, n_modes * N_lam * sizeof(double));
-    memset(P_i0_out, 0, n_modes * N_lam * sizeof(double));
+    memset(P_0i_bare, 0, n_modes * N_lam * sizeof(double));
+    memset(P_0i_fi,   0, n_modes * N_lam * sizeof(double));
+    memset(P_i0_bare, 0, n_modes * N_lam * sizeof(double));
+    memset(P_i0_fi,   0, n_modes * N_lam * sizeof(double));
 
     #pragma omp parallel for schedule(dynamic, 1)
     for (int il = 0; il < N_lam; il++) {
@@ -1202,15 +1215,18 @@ EXPORT void compute_modes_spectrum(
 
         double local_P0i[MAX_P+1];
         double local_Pi0[MAX_P+1];
-        double acc_P0i[MAX_P+1];
-        double acc_Pi0[MAX_P+1];
-        memset(acc_P0i, 0, n_modes * sizeof(double));
-        memset(acc_Pi0, 0, n_modes * sizeof(double));
+        double acc_P0i_b[MAX_P+1], acc_P0i_f[MAX_P+1];
+        double acc_Pi0_b[MAX_P+1], acc_Pi0_f[MAX_P+1];
+        memset(acc_P0i_b, 0, n_modes * sizeof(double));
+        memset(acc_P0i_f, 0, n_modes * sizeof(double));
+        memset(acc_Pi0_b, 0, n_modes * sizeof(double));
+        memset(acc_Pi0_f, 0, n_modes * sizeof(double));
 
         for (int ji = 0; ji < N_i; ji++) {
             int idx = base + ji;
             double w = weights[idx];
             if (w <= 0.0) continue;
+            double wf = w * f_i_arr[idx];
 
             one_spectral_point_lgsum(
                 k_s_arr[idx], k_i_arr[idx], dk_arr[idx], pm,
@@ -1222,14 +1238,18 @@ EXPORT void compute_modes_spectrum(
                 local_P0i, local_Pi0);
 
             for (int p = 0; p < n_modes; p++) {
-                acc_P0i[p] += w * local_P0i[p];
-                acc_Pi0[p] += w * local_Pi0[p];
+                acc_P0i_b[p] += w  * local_P0i[p];
+                acc_P0i_f[p] += wf * local_P0i[p];
+                acc_Pi0_b[p] += w  * local_Pi0[p];
+                acc_Pi0_f[p] += wf * local_Pi0[p];
             }
         }
 
         for (int p = 0; p < n_modes; p++) {
-            P_0i_out[p * N_lam + il] = acc_P0i[p];
-            P_i0_out[p * N_lam + il] = acc_Pi0[p];
+            P_0i_bare[p * N_lam + il] = acc_P0i_b[p];
+            P_0i_fi  [p * N_lam + il] = acc_P0i_f[p];
+            P_i0_bare[p * N_lam + il] = acc_Pi0_b[p];
+            P_i0_fi  [p * N_lam + il] = acc_Pi0_f[p];
         }
     }
 }
